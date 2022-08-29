@@ -6,7 +6,7 @@ class Editor {
     this.screen_width = this.element.offsetWidth
     this.screen_height = this.element.offsetHeight
     this.background = this._createCanvas(0)
-    this.display = this._createCanvas(1)
+    this.selection = this._createCanvas(1)
 
     this.mouse_state = {}
     this.keyboard_state = {}
@@ -82,65 +82,183 @@ class Editor {
     }
   }
 
+  // 计算两点距离
+  _distance (x1, y1, x2, y2) {
+    return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2))
+  }
+
+  // 判断坐标是否在指定区域内
+  _inSelection (x1, y1, x2, y2, x, y) {
+    return x >= x1 && x <= x2 && y >= y1 && y <= y2
+  }
+
   _initDisplay () {
-    const start = {
+    const state = {
+      stop: true,
+      update: -1,
+      move: false
+    }
+
+    const pos = {
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: 0
+    }
+
+    const startPos = {
       x: 0,
-      y: 0,
-      stop: true
+      y: 0
     }
 
-    this.display.element.onmousedown = event => {
-      this.display.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
+    this.selection.element.onmousedown = event => {
+      const selection = this.getCurrentSelection()
+      if (selection.x1 !== -1) {
+        const x = event.offsetX
+        const y = event.offsetY
+
+        const pos = [
+          [selection.x1, selection.y1],
+          [selection.x2, selection.y2],
+          [selection.x1, selection.y2],
+          [selection.x2, selection.y1]
+        ]
+
+        const distances = [
+          this._distance(x, y, pos[0][0], pos[0][1]),
+          this._distance(x, y, pos[1][0], pos[1][1]),
+          this._distance(x, y, pos[2][0], pos[2][1]),
+          this._distance(x, y, pos[3][0], pos[3][1])
+        ]
+
+        const min = Math.min(...distances)
+
+        if (min < 5) {
+          state.stop = false
+          state.move = false
+          const index = distances.indexOf(min)
+
+          state.update = index
+
+          return
+        }
+
+        if (this._inSelection(selection.x1, selection.y1, selection.x2, selection.y2, x, y)) {
+          // 计算坐标与边界的距离
+          const top = Math.min(selection.y1, selection.y2) - y
+          const bottom = Math.max(selection.y1, selection.y2) - y
+          const left = Math.min(selection.x1, selection.x2) - x
+          const right = Math.max(selection.x1, selection.x2) - x
+
+          // 计算最小距离
+          const min = Math.abs(Math.min(top, bottom, left, right))
+          if (min > 10) {
+            state.stop = false
+            state.move = true
+            state.update = -1
+            startPos.x = x
+            startPos.y = y
+            return
+          }
+        }
+      }
+
+      state.update = -1
+      state.move = false
+      this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
       // 清空display画布
-      start.x = event.offsetX
-      start.y = event.offsetY
-      start.stop = false
+      pos.x1 = event.offsetX
+      pos.y1 = event.offsetY
+      state.stop = false
     }
 
-    this.display.element.onmousemove = event => {
-      if (start.stop || this.keyboard_state[' ']) return
-      this.display.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
+    this.selection.element.onmousemove = event => {
+      if (state.stop || this.keyboard_state[' ']) return
+      this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
       const x = event.offsetX
       const y = event.offsetY
 
-      this.display.ctx.beginPath()
-      this.display.ctx.strokeStyle = '#000'
-      this.display.ctx.moveTo(start.x, start.y)
-      this.display.ctx.lineTo(start.x, y)
-      this.display.ctx.lineTo(x, y)
-      this.display.ctx.lineTo(x, start.y)
-      this.display.ctx.closePath()
-      this.display.ctx.stroke()
+      console.log(state)
 
-      // 绘制半透明的矩形
-      this.display.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
-      this.display.ctx.fillRect(start.x, start.y, x - start.x, y - start.y)
+      if (state.update !== -1) {
+        if (state.update === 0) {
+          pos.x1 = x
+          pos.y1 = y
+        } else if (state.update === 1) {
+          pos.x2 = x
+          pos.y2 = y
+        } else if (state.update === 2) {
+          pos.x1 = x
+          pos.y2 = y
+        } else if (state.update === 3) {
+          pos.x2 = x
+          pos.y1 = y
+        }
+      } else if (state.move) {
+        const offsetX = x - startPos.x
+        const offsetY = y - startPos.y
+        startPos.x = x
+        startPos.y = y
+        pos.x1 += offsetX
+        pos.y1 += offsetY
+        pos.x2 += offsetX
+        pos.y2 += offsetY
+      } else {
+        pos.x2 = x
+        pos.y2 = y
+      }
+
+      this.createSelection(pos.x1, pos.y1, pos.x2, pos.y2)
 
       this.state_selection = {
-        x1: start.x,
-        y1: start.y,
-        x2: x,
-        y2: y
+        x1: pos.x1,
+        y1: pos.y1,
+        x2: pos.x2,
+        y2: pos.y2
       }
     }
 
-    this.display.element.onmouseup = event => {
-      start.stop = true
-      const x1 = start.x
-      const x2 = event.offsetX
-      const y1 = start.y
-      const y2 = event.offsetY
+    this.selection.element.onmouseup = event => {
+      state.stop = true
 
-      const diffX = Math.abs(x1 - x2)
-      const diffY = Math.abs(y1 - y2)
-
-      const min = Math.min(diffX, diffY)
+      const d = this._distance(pos.x1, pos.y1, pos.x2, pos.y2)
       // 如果选区小于2像素，就清空选区
-      if (min < 2) {
+      if (d < 2) {
         console.log('[selection] clear selection')
         this.state_selection = null
       }
     }
+  }
+
+  createSelection (x1, y1, x2, y2) {
+    // 清空画布
+    this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
+    this.selection.ctx.beginPath()
+    this.selection.ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'
+    this.selection.ctx.moveTo(x1, y1)
+    this.selection.ctx.lineTo(x1, y2)
+    this.selection.ctx.lineTo(x2, y2)
+    this.selection.ctx.lineTo(x2, y1)
+    this.selection.ctx.closePath()
+    this.selection.ctx.stroke()
+
+    // 绘制半透明的矩形
+    this.selection.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
+    this.selection.ctx.fillRect(x1, y1, x2 - x1, y2 - y1)
+
+    // 绘制圆点
+    const color = 'rgba(0, 0, 0, 0.6)'
+    this._selectionDrawDot(x1, y1, 3, color)
+    this._selectionDrawDot(x2, y2, 3, color)
+    this._selectionDrawDot(x1, y2, 3, color)
+    this._selectionDrawDot(x2, y1, 3, color)
+  }
+
+  _selectionDrawDot (x, y, r, color) {
+    this.selection.ctx.fillStyle = color
+    this.selection.ctx.beginPath()
+    this.selection.ctx.arc(x, y, r, 0, Math.PI * 2)
+    this.selection.ctx.fill()
   }
 
   getCurrentSelection () {
@@ -247,7 +365,7 @@ class Editor {
       const image = new Image()
       image.onload = () => {
         this.image = image
-        this.display.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
+        this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
         this.state_selection = null
         this.drawImage(this.state_move_x, this.state_move_y, this.state_scale)
       }
@@ -296,7 +414,3 @@ class Editor {
     this.drawImage(-this.state_move_x, -this.state_move_y, this.state_scale)
   }
 }
-
-const editor = new Editor('#editor')
-
-editor.loadImage('./01GBHWVD9RY9W3Z2MN67TGMSBD.png')
