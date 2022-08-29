@@ -89,7 +89,12 @@ class Editor {
 
   // 判断坐标是否在指定区域内
   _inSelection (x1, y1, x2, y2, x, y) {
-    return x >= x1 && x <= x2 && y >= y1 && y <= y2
+    const formated_x1 = Math.min(x1, x2)
+    const formated_x2 = Math.max(x1, x2)
+    const formated_y1 = Math.min(y1, y2)
+    const formated_y2 = Math.max(y1, y2)
+    
+    return x >= formated_x1 && x <= formated_x2 && y >= formated_y1 && y <= formated_y2
   }
 
   _initDisplay () {
