@@ -6,7 +6,7 @@ class Editor {
     this.screen_width = this.element.offsetWidth
     this.screen_height = this.element.offsetHeight
     this.background = this._createCanvas(0)
-    this.selection = this._createCanvas(1)
+    this.selection = this._createCanvas(2)
 
     this.mouse_state = {}
     this.keyboard_state = {}
@@ -111,7 +111,8 @@ class Editor {
     const state = {
       stop: true,
       update: -1,
-      move: false
+      move: false,
+      rotate: null
     }
 
     const pos = {
@@ -128,9 +129,11 @@ class Editor {
 
     this.selection.element.onmousedown = event => {
       const selection = this.getCurrentSelection()
+      const x = event.offsetX
+      const y = event.offsetY
+
+      // 判断是否已有选区
       if (selection.x1 !== -1) {
-        const x = event.offsetX
-        const y = event.offsetY
 
         const pos = [
           [selection.x1, selection.y1],
@@ -148,6 +151,7 @@ class Editor {
 
         const min = Math.min(...distances)
 
+        // 缩放选区
         if (min < 5) {
           state.stop = false
           state.move = false
@@ -158,6 +162,7 @@ class Editor {
           return
         }
 
+        // 移动选区
         if (this._inSelection(selection.x1, selection.y1, selection.x2, selection.y2, x, y)) {
           // 计算坐标与边界的距离
           const top = Math.min(selection.y1, selection.y2) - y
@@ -176,8 +181,12 @@ class Editor {
             return
           }
         }
+      } else {
+        if (this._getMinDistance(x, y) < 10 && this._inImageArea(x, y)) return state.rotate = [x, y]
       }
 
+      // 创建选区
+      state.rotate = null
       state.update = -1
       state.move = false
       this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
@@ -187,13 +196,31 @@ class Editor {
       state.stop = false
     }
 
-    this.selection.element.onmousemove = event => {
-      if (state.stop || this.keyboard_state[' ']) return
-      this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
+    this.selection.element.onmousemove = async event => {
+      if (!this.image) return
+
       const x = event.offsetX
       const y = event.offsetY
 
-      console.log(state)
+      if (this._getMinDistance(x, y) < 10 && this._inImageArea(x, y)) {
+        this.element.style.cursor = 'pointer'
+      } else {
+        this.element.style.cursor = 'default'
+      }
+
+      if (state.rotate) {
+        const [x1, y1] = state.rotate
+        const angle = Math.floor(Math.atan2(y - y1, x - x1) * 180 / Math.PI)
+
+        state.rotate = [x, y]
+
+        console.log(`[rotate] ${angle}°`)
+        this.rotate(angle)
+        return
+      }
+
+      if (state.stop || this.keyboard_state[' ']) return
+      this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
 
       if (state.update !== -1) {
         if (state.update === 0) {
@@ -235,6 +262,9 @@ class Editor {
 
     this.selection.element.onmouseup = event => {
       state.stop = true
+      state.update = -1
+      state.move = false
+      state.rotate = null
 
       const d = this._distance(pos.x1, pos.y1, pos.x2, pos.y2)
       // 如果选区小于2像素，就清空选区
@@ -243,6 +273,38 @@ class Editor {
         this.state_selection = null
       }
     }
+  }
+
+  _getMinDistance (x, y) {
+    const pos1 = this._transformImageToCanvas(0, 0) // 左上角
+    const pos2 = this._transformImageToCanvas(this.image.width, 0) // 右上角
+    const pos3 = this._transformImageToCanvas(this.image.width, this.image.height) // 右下角
+    const pos4 = this._transformImageToCanvas(0, this.image.height) // 左下角
+
+    const distances = [
+      this._distance(x, y, pos1.x, pos1.y),
+      this._distance(x, y, pos2.x, pos2.y),
+      this._distance(x, y, pos3.x, pos3.y),
+      this._distance(x, y, pos4.x, pos4.y)
+    ]
+
+    return Math.min(...distances)
+  }
+
+  _inImageArea (x, y) {
+    const pos1 = this._transformImageToCanvas(0, 0) // 左上角
+    const pos2 = this._transformImageToCanvas(this.image.width, 0) // 右上角
+    const pos3 = this._transformImageToCanvas(this.image.width, this.image.height) // 右下角
+    const pos4 = this._transformImageToCanvas(0, this.image.height) // 左下角
+
+    const image_area = {
+      x1: Math.min(pos1.x, pos2.x, pos3.x, pos4.x),
+      y1: Math.min(pos1.y, pos2.y, pos3.y, pos4.y),
+      x2: Math.max(pos1.x, pos2.x, pos3.x, pos4.x),
+      y2: Math.max(pos1.y, pos2.y, pos3.y, pos4.y)
+    }
+
+    return this._inSelection(image_area.x1, image_area.y1, image_area.x2, image_area.y2, x, y)
   }
 
   createSelection (x1, y1, x2, y2) {
@@ -267,6 +329,46 @@ class Editor {
     this._selectionDrawDot(x2, y2, 3, color)
     this._selectionDrawDot(x1, y2, 3, color)
     this._selectionDrawDot(x2, y1, 3, color)
+  }
+
+  // 绘制旋转方块
+  rotate_outline (deg) {
+    const canvas = document.createElement('canvas')
+    canvas.width = this.image.width * this.state_scale
+    canvas.height = this.image.height * this.state_scale
+
+    const ctx = canvas.getContext('2d')
+    // 更改原点到图片中心
+    ctx.translate(canvas.width / 2, canvas.height / 2)
+
+    const x1 = -this.image.width / 2
+    const y1 = -this.image.height / 2
+    const x2 = this.image.width / 2
+    const y2 = this.image.height / 2
+
+    // 清空画布
+    ctx.clearRect(x1, y1, x2 - x1, y2 - y1)
+    ctx.beginPath()
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'
+    ctx.moveTo(x1, y1)
+    ctx.lineTo(x1, y2)
+    ctx.lineTo(x2, y2)
+    ctx.lineTo(x2, y1)
+    ctx.closePath()
+    ctx.stroke()
+
+    const angle = deg * Math.PI / 180
+    ctx.rotate(angle)
+
+    return new Promise(resolve => {
+      ctx.canvas.toBlob(blob => {
+        const img = new Image()
+        img.src = URL.createObjectURL(blob)
+        img.onload = () => {
+          resolve(img)
+        }
+      })
+    })
   }
 
   _selectionDrawDot (x, y, r, color) {
@@ -349,8 +451,6 @@ class Editor {
     const dx = image_dx / scale
     const dy = image_dy / scale
 
-    console.log(`[transform] x: ${x} -> ${dx}, y: ${y} -> ${dy}`)
-
     return {
       x: dx,
       y: dy
@@ -387,8 +487,6 @@ class Editor {
     const dx = image_dx + image_x
     const dy = image_dy + image_y
 
-    console.log(`[transform] x: ${x} -> ${dx}, y: ${y} -> ${dy}`)
-
     return {
       x: dx,
       y: dy
@@ -422,6 +520,36 @@ class Editor {
         this.image = image
         this.selection.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
         this.state_selection = null
+        this.drawImage(this.state_move_x, this.state_move_y, this.state_scale)
+      }
+
+      image.src = url
+    })
+  }
+
+  // 旋转图片
+  rotate (angle) {
+    const canvas = document.createElement('canvas')
+
+    // 计算旋转后需要的宽高
+    const width = Math.abs(this.image.width * Math.sin(angle)) + Math.abs(this.image.height * Math.cos(angle))
+    const height = Math.abs(this.image.width * Math.cos(angle)) + Math.abs(this.image.height * Math.sin(angle))
+
+    canvas.width = width
+    canvas.height = height
+
+    const ctx = canvas.getContext('2d')
+
+    ctx.translate(canvas.width / 2, canvas.height / 2)
+    ctx.rotate(angle * Math.PI / 180)
+    ctx.drawImage(this.image, -this.image.width / 2, -this.image.height / 2)
+
+    ctx.canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob)
+
+      const image = new Image()
+      image.onload = () => {
+        this.image = image
         this.drawImage(this.state_move_x, this.state_move_y, this.state_scale)
       }
 
