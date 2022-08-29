@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <style>
+    #editor {
+      width: 800px;
+      height: 600px;
+      display: inline-block;
+    }
+
+    .wrapper {
+      display: inline-block;
+      padding: 12px;
+      border: 2px solid #000;
+    }
+  </style>
+
+  <div class="wrapper">
+    <div id="editor"></div>
+  </div>
+
+  <button>选择图片</button>
+
+  <script src="./bundle.js"></script>
+  <script>
+    const editor = new Editor(document.getElementById('editor'))
+    document.querySelector('button').onclick = () => {
+      const filePicker = document.createElement('input')
+      filePicker.type = 'file'
+      filePicker.accept = 'image/*'
+      filePicker.onchange = () => {
+        const file = filePicker.files[0]
+        const blob = file.slice(0, file.size, file.type)
+        const url = URL.createObjectURL(blob)
+        editor.loadImage(url)
+      }
+
+      filePicker.click()
+    }
+  </script>
+</body>
+</html>

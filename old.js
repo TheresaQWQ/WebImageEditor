@@ -1,4 +1,4 @@
-class Editor {
+class _Editor {
   constructor (e) {
     this.element = typeof e === 'string' ? document.querySelector(e) : e
     this.element.style.position = 'relative'
@@ -81,8 +81,8 @@ class Editor {
     element.width = this.screen_width
     element.height = this.screen_height
     element.style.position = 'absolute'
-    element.style.left = 0
-    element.style.top = 0
+    element.style.left = "0"
+    element.style.top = "0"
     element.style.zIndex = zIndex
     this.element.appendChild(element)
     const ctx = element.getContext('2d')
@@ -196,7 +196,7 @@ class Editor {
       state.stop = false
     }
 
-    this.selection.element.onmousemove = async event => {
+    this.selection.element.onmousemove = event => {
       if (!this.image) return
 
       const x = event.offsetX
@@ -529,21 +529,26 @@ class Editor {
 
   // 旋转图片
   rotate (angle) {
+    // 离 屏 渲 染
     const canvas = document.createElement('canvas')
 
     // 计算旋转后需要的宽高
-    const width = Math.abs(this.image.width * Math.sin(angle)) + Math.abs(this.image.height * Math.cos(angle))
-    const height = Math.abs(this.image.width * Math.cos(angle)) + Math.abs(this.image.height * Math.sin(angle))
+    const width = Math.abs(this.image.width * Math.cos(angle)) + Math.abs(this.image.height * Math.sin(angle))
+    const height = Math.abs(this.image.width * Math.sin(angle)) + Math.abs(this.image.height * Math.cos(angle))
 
     canvas.width = width
     canvas.height = height
 
     const ctx = canvas.getContext('2d')
 
+    // 修改原点
     ctx.translate(canvas.width / 2, canvas.height / 2)
+    // 转
     ctx.rotate(angle * Math.PI / 180)
+    // 画图
     ctx.drawImage(this.image, -this.image.width / 2, -this.image.height / 2)
 
+    // 拿到旋转之后的图片
     ctx.canvas.toBlob(blob => {
       const url = URL.createObjectURL(blob)
 
@@ -589,7 +594,6 @@ class Editor {
 
     if (!this.state_move_x) this.state_move_x = 0
     if (!this.state_move_y) this.state_move_y = 0
-    if (!this.state_scale) this.state_scale = scale
 
     this.state_move_x -= x
     this.state_move_y -= y
