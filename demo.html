@@ -25,11 +25,28 @@
     <div id="editor"></div>
   </div>
 
+  <button>选择图片</button>
+
   <script src="./editor.js"></script>
 
   <script>
     const editor = new Editor('#editor')
-    editor.loadImage('./demo.png')
+    document.querySelector('button').onclick = () => {
+      const filePicker = document.createElement('input')
+      filePicker.type = 'file'
+      filePicker.accept = 'image/*'
+      filePicker.onchange = () => {
+        const file = filePicker.files[0]
+        const reader = new FileReader()
+        reader.onload = () => {
+          const url = reader.result
+          editor.loadImage(url)
+        }
+        reader.readAsDataURL(file)
+      }
+
+      filePicker.click()
+    }
   </script>
 </body>
 </html>

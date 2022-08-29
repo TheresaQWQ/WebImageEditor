@@ -280,6 +280,8 @@ class Editor {
   }
 
   loadImage (url) {
+    this.background.ctx.clearRect(0, 0, this.screen_width, this.screen_height)
+
     this.image = new Image()
     this.image.onload = () => {
       const canvas_width = this.screen_width
