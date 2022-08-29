@@ -46,6 +46,8 @@ class Editor {
       const offset = event.wheelDelta / 120 / 50
       this.state_scale += offset
       this.scale(this.state_scale)
+      
+      // TODO: 缩放时选区相对于图片的位置不变
     }
 
     this.element.onmousemove = event => {
@@ -62,6 +64,14 @@ class Editor {
         this.mouse_state[0][1] = y
 
         this.move(offsetX, offsetY)
+
+        if (this.getCurrentSelection().x1 !== -1) {
+          this.state_selection.x1 -= offsetX
+          this.state_selection.y1 -= offsetY
+          this.state_selection.x2 -= offsetX
+          this.state_selection.y2 -= offsetY
+          this.createSelection(this.state_selection.x1, this.state_selection.y1, this.state_selection.x2, this.state_selection.y2)
+        }
       }
     }
   }
@@ -338,6 +348,44 @@ class Editor {
     // 原始坐标
     const dx = image_dx / scale
     const dy = image_dy / scale
+
+    console.log(`[transform] x: ${x} -> ${dx}, y: ${y} -> ${dy}`)
+
+    return {
+      x: dx,
+      y: dy
+    }
+  }
+
+  // 转换图片坐标到canvas坐标
+  _transformImageToCanvas (x, y) {
+    const scale = this.state_scale
+    const offsetX = (this.state_move_x || 0) * -1
+    const offsetY = (this.state_move_y || 0) * -1
+
+    // 图片原始大小
+    const image_width = this.image.width
+    const image_height = this.image.height
+
+    // 画布大小
+    const canvas_width = this.screen_width
+    const canvas_height = this.screen_height
+
+    // 缩放后图片大小
+    const width = image_width * scale
+    const height = image_height * scale
+
+    // 缩放后图片左上角坐标
+    const image_x = (canvas_width - width) / 2 - offsetX
+    const image_y = (canvas_height - height) / 2 - offsetY
+
+    // 缩放后相对于图片的坐标
+    const image_dx = x * scale
+    const image_dy = y * scale
+
+    // 原始坐标
+    const dx = image_dx + image_x
+    const dy = image_dy + image_y
 
     console.log(`[transform] x: ${x} -> ${dx}, y: ${y} -> ${dy}`)
 
