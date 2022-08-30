@@ -10,20 +10,20 @@ export default class Selection extends Root {
   // @ts-ignore
   private image: HTMLImageElement
 
-  // 图片距离画布左上角的坐标
-  private position: { x: number, y: number } = { x: 0, y: 0 }
-
-  // 图片距离中心点的距离
-  private offset: { x: number, y: number } = { x: 0, y: 0 }
-
-  // 图片所在的矩形区域
-  private area: { x1: number, y1: number, x2: number, y2: number } = { x1: 0, y1: 0, x2: 0, y2: 0 }
-
-  // 缩放倍率
-  private scale: number = 1
-
   // 上一个鼠标坐标
   private prevPosition: { x: number, y: number } = { x: -1, y: -1 }
+
+  // 图片距离画布左上角的坐标
+  public position: { x: number, y: number } = { x: 0, y: 0 }
+
+  // 图片距离中心点的距离
+  public offset: { x: number, y: number } = { x: 0, y: 0 }
+
+  // 图片所在的矩形区域
+  public area: { x1: number, y1: number, x2: number, y2: number } = { x1: 0, y1: 0, x2: 0, y2: 0 }
+
+  // 缩放倍率
+  public scale: number = 1
 
   init () {
     const c = canvas(1)
@@ -37,6 +37,8 @@ export default class Selection extends Root {
 
     // 缩放
     this.root.addEventListener('wheel', event => {
+      if (event.altKey) return
+
       event.preventDefault()
       event.stopPropagation()
 
@@ -103,6 +105,10 @@ export default class Selection extends Root {
 
   setImage (image: HTMLImageElement) {
     this.image = image
+  }
+
+  getImage () {
+    return this.image
   }
 
   update (isInit: boolean = false) {

@@ -2,7 +2,7 @@ import Cache from './cache'
 import Selection from './layers/selection'
 import Image from './layers/image'
 import Background from './layers/background'
-
+import Rotate from './operations/rotate'
 export default class Render {
   private history: any[]
   private cache: Cache
@@ -11,6 +11,10 @@ export default class Render {
     selection: Selection,
     image: Image,
     background: Background
+  }
+
+  public operations: {
+    rotate: Rotate
   }
 
   constructor (root: HTMLElement) {
@@ -33,6 +37,16 @@ export default class Render {
     this.layers.background.init()
     this.layers.image.init()
     this.layers.selection.init()
+
+    this.operations = {
+      rotate: new Rotate()
+    }
+
+    this.operations.rotate.setRoot(root)
+
+    this.operations.rotate.setRender(this)
+
+    this.operations.rotate.init()
   }
 
   public init (image: HTMLImageElement) {
