@@ -27,22 +27,18 @@
 
   <button>选择图片</button>
 
-  <script src="./editor.js"></script>
-
+  <script src="./bundle.js"></script>
   <script>
-    const editor = new Editor('#editor')
+    const editor = new Editor(document.getElementById('editor'))
     document.querySelector('button').onclick = () => {
       const filePicker = document.createElement('input')
       filePicker.type = 'file'
       filePicker.accept = 'image/*'
       filePicker.onchange = () => {
         const file = filePicker.files[0]
-        const reader = new FileReader()
-        reader.onload = () => {
-          const url = reader.result
-          editor.loadImage(url)
-        }
-        reader.readAsDataURL(file)
+        const blob = file.slice(0, file.size, file.type)
+        const url = URL.createObjectURL(blob)
+        editor.loadImage(url)
       }
 
       filePicker.click()

@@ -1,10 +1,10 @@
 const path = require('path')
 
-module.exports = {
+module.exports = (env, argv) => ({
   entry: './src/index.ts',
   output: {
     filename: 'bundle.js',
-    path: path.join(__dirname, './dist')
+    path: path.join(__dirname, argv.mode === 'production' ? 'dist' : 'demo')
   },
   resolve: {
     extensions: ['.ts', '.js']
@@ -16,4 +16,4 @@ module.exports = {
       exclude: /node_modules/
     }]
   }
-}
+})
