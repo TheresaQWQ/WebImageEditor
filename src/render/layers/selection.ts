@@ -14,9 +14,7 @@ export default class Selection extends Root {
   private area: { x1: number, y1: number, x2: number, y2: number } = { x1: 0, y1: 0, x2: 0, y2: 0 }
 
   init () {
-    if (!this.root) throw new Error('root element is required')
-
-    const c = canvas(0)
+    const c = canvas(2)
     this.canvas = c.canvas
     const width = this.root.clientWidth
     const height = this.root.clientHeight
@@ -26,6 +24,8 @@ export default class Selection extends Root {
     this.root.appendChild(this.canvas)
 
     this.root.addEventListener('mousedown', event => {
+      if (this.keyboard.getState(' ')) return
+
       const x = event.offsetX
       const y = event.offsetY
 
@@ -35,6 +35,11 @@ export default class Selection extends Root {
 
     this.root.addEventListener('mousemove', event => {
       if (!this.state) return
+      if (this.keyboard.getState(' ')) {
+        this.state = false
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+        return
+      }
 
       const x = event.offsetX
       const y = event.offsetY
