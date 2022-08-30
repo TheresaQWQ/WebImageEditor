@@ -26,6 +26,10 @@ export default class Render {
     this.layers.image.setRoot(root)
     this.layers.selection.setRoot(root)
 
+    this.layers.background.setRender(this)
+    this.layers.image.setRender(this)
+    this.layers.selection.setRender(this)
+
     this.layers.background.init()
     this.layers.image.init()
     this.layers.selection.init()

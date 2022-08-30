@@ -1,5 +1,6 @@
 import Root from '../../root'
 import canvas from '../canvas'
+import math from '../../math'
 
 export default class Selection extends Root {
   // @ts-ignore
@@ -15,9 +16,13 @@ export default class Selection extends Root {
   // 图片距离中心点的距离
   private offset: { x: number, y: number } = { x: 0, y: 0 }
 
+  // 图片所在的矩形区域
+  private area: { x1: number, y1: number, x2: number, y2: number } = { x1: 0, y1: 0, x2: 0, y2: 0 }
+
   // 缩放倍率
   private scale: number = 1
 
+  // 上一个鼠标坐标
   private prevPosition: { x: number, y: number } = { x: -1, y: -1 }
 
   init () {
@@ -30,6 +35,7 @@ export default class Selection extends Root {
     this.ctx = c.ctx
     this.root.appendChild(this.canvas)
 
+    // 缩放
     this.root.addEventListener('wheel', event => {
       event.preventDefault()
       event.stopPropagation()
@@ -50,6 +56,7 @@ export default class Selection extends Root {
       this.update()
     })
 
+    // 拖拽
     this.root.addEventListener('mousemove', event => {
       if (!this.mouse.getState(0)) return
       if (!this.keyboard.getState(' ')) return
@@ -72,15 +79,30 @@ export default class Selection extends Root {
       this.update()
     })
 
+    // 拖拽结束
     this.root.addEventListener('mouseup', event => {
       this.prevPosition.x = -1
       this.prevPosition.y = -1
     })
+
+    // 双击
+    this.root.addEventListener('dblclick', event => {
+      const x = event.offsetX
+      const y = event.offsetY
+
+      if (math.inArea(x, y, this.area.x1, this.area.y1, this.area.x2, this.area.y2)) {
+        this.Render.layers.selection.createSelection(this.area.x1, this.area.y1, this.area.x2, this.area.y2)
+      }
+    })
   }
 
   render (image: HTMLImageElement) {
-    this.image = image
+    this.setImage(image)
     this.update(true)
+  }
+
+  setImage (image: HTMLImageElement) {
+    this.image = image
   }
 
   update (isInit: boolean = false) {
@@ -95,7 +117,13 @@ export default class Selection extends Root {
     if (!isInit) {
       this.position.x = this.offset.x + canvasWidth / 2 - imageWidth / 2 * this.scale
       this.position.y = this.offset.y + canvasHeight / 2 - imageHeight / 2 * this.scale
+
       this.ctx.drawImage(this.image, this.position.x, this.position.y, this.image.width * this.scale, this.image.height * this.scale)
+
+      this.area.x1 = this.position.x
+      this.area.y1 = this.position.y
+      this.area.x2 = this.position.x + this.image.width * this.scale
+      this.area.y2 = this.position.y + this.image.height * this.scale
       return
     }
 
@@ -111,5 +139,26 @@ export default class Selection extends Root {
     }
 
     this.ctx.drawImage(this.image, this.position.x, this.position.y, this.image.width * this.scale, this.image.height * this.scale)
+
+    this.area.x1 = this.position.x
+    this.area.y1 = this.position.y
+    this.area.x2 = this.position.x + this.image.width * this.scale
+    this.area.y2 = this.position.y + this.image.height * this.scale
+  }
+
+  // 转换canvas坐标到图片坐标
+  transformCanvasToImage (x: number, y: number) {
+    return {
+      x: (x - this.position.x) / this.scale,
+      y: (y - this.position.y) / this.scale
+    }
+  }
+
+  // 转换图片坐标到canvas坐标
+  transformImageToCanvas (x: number, y: number) {
+    return {
+      x: x * this.scale + this.position.x,
+      y: y * this.scale + this.position.y
+    }
   }
 }
